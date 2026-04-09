@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Room Height Matrix Dashboard</title>
+<style>
+:root {
+  --gold: #C9A84C;
+  --gold-light: #E8D5A3;
+  --gold-dark: #8B6914;
+  --black: #0D0D0D;
+  --black-2: #1A1A1A;
+  --black-3: #252525;
+  --black-4: #333333;
+  --white: #FFFFFF;
+  --white-2: #F5F5F5;
+  --white-3: #E8E8E8;
+  --muted: #888888;
+  --border: rgba(201,168,76,0.3);
+  --border-strong: rgba(201,168,76,0.6);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--black); color: var(--white); padding: 1.5rem; }
+.wrap { max-width: 100%; }
+h1 { font-size: 18px; font-weight: 500; margin-bottom: 1rem; color: var(--gold); letter-spacing: 0.04em; }
+.filter-group > label { font-size: 11px; color: var(--gold-light); letter-spacing: 0.04em; }
+.btn { font-size: 12px; padding: 4px 12px; border: 0.5px solid var(--border-strong); border-radius: 8px; background: var(--black-3); color: var(--white-2); cursor: pointer; height: 30px; white-space: nowrap; font-family: inherit; }
+.btn:hover { background: var(--black-4); border-color: var(--gold); color: var(--gold-light); }
+.btn-primary { background: var(--black-2); color: var(--gold); border-color: var(--gold); }
+.btn-primary:hover { background: var(--black-3); color: var(--gold-light); }
+.btn-danger { background: var(--black-2); color: #e07070; border-color: rgba(200,80,80,0.5); }
+.btn-danger:hover { background: #2a1010; color: #f09090; border-color: #c05050; }
+.section { background: var(--black-2); border: 0.5px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem; margin-bottom: 1rem; }
+.matrix-scroll { overflow-x: auto; overflow-y: auto; max-height: 520px; border: 0.5px solid var(--border); border-radius: 8px; }
+table { border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+th { background: var(--black-3); color: var(--gold); font-weight: 500; font-size: 11px; padding: 5px 4px; border: 0.5px solid var(--border); white-space: nowrap; width: 72px; text-align: center; letter-spacing: 0.02em; }
+th.rh { position: sticky; left: 0; z-index: 4; width: 120px; min-width: 120px; text-align: left; padding-left: 8px; background: var(--black-3); }
+th.sr { position: sticky; top: 0; z-index: 2; }
+th.rh.sr { z-index: 5; }
+td { padding: 3px 4px; border: 0.5px solid rgba(201,168,76,0.12); vertical-align: top; width: 72px; height: 36px; background: var(--black); }
+td.rh { position: sticky; left: 0; background: var(--black-2); font-weight: 500; font-size: 11px; color: var(--white-2); z-index: 1; width: 120px; min-width: 120px; white-space: nowrap; padding: 4px 6px 4px 8px; border-right: 0.5px solid var(--border-strong); }
+td.drop-over { background: #2a2200 !important; outline: 2px dashed var(--gold); outline-offset: -2px; }
+th.col-hidden, td.col-hidden { display: none; }
+.cell-inner { display: flex; flex-direction: column; gap: 2px; min-height: 28px; }
+.stag { display: inline-flex; align-items: center; gap: 3px; background: #1e1800; color: var(--gold); border-radius: 4px; padding: 2px 5px; font-size: 11px; cursor: grab; border: 0.5px solid var(--border-strong); user-select: none; white-space: nowrap; }
+.stag:hover { background: #2a2200; border-color: var(--gold); }
+.stag:active { cursor: grabbing; }
+.stag.dragging { opacity: 0.4; }
+.dx { cursor: pointer; font-size: 10px; color: #e07070; margin-left: 1px; }
+.dx:hover { color: #f09090; }
+.ab { background: transparent; border: 0.5px dashed rgba(201,168,76,0.25); border-radius: 4px; padding: 1px 4px; font-size: 11px; color: var(--muted); cursor: pointer; text-align: center; }
+.ab:hover { background: #1e1800; color: var(--gold); border-color: var(--gold); border-style: solid; }
+.filter-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 12px; }
+.filter-group { display: flex; flex-direction: column; gap: 4px; }
+.dropdown-wrap { position: relative; }
+.dd-trigger { display: flex; align-items: center; gap: 6px; padding: 4px 10px; border: 0.5px solid var(--border-strong); border-radius: 8px; background: var(--black-3); color: var(--white-2); font-size: 12px; cursor: pointer; height: 30px; min-width: 180px; user-select: none; font-family: inherit; }
+.dd-trigger:hover { border-color: var(--gold); color: var(--gold-light); }
+.dd-trigger .arrow { margin-left: auto; font-size: 10px; color: var(--gold); }
+.dd-panel { display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 50; background: var(--black-2); border: 0.5px solid var(--border-strong); border-radius: 12px; padding: 12px; min-width: 290px; }
+.dd-panel.open { display: block; }
+.dd-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+.dd-tab { font-size: 11px; padding: 3px 10px; border-radius: 20px; border: 0.5px solid var(--border); cursor: pointer; background: var(--black-3); color: var(--muted); }
+.dd-tab.active { background: #1e1800; color: var(--gold); border-color: var(--gold); }
+.dd-pane { display: none; }
+.dd-pane.active { display: block; }
+.range-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--white-2); flex-wrap: wrap; }
+.range-row input[type=number] { width: 70px; padding: 4px 6px; font-size: 12px; border: 0.5px solid var(--border-strong); border-radius: 8px; background: var(--black-3); color: var(--white); font-family: inherit; }
+.range-row input[type=number]:focus { outline: none; border-color: var(--gold); }
+.ms-list { max-height: 180px; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 2px; margin-bottom: 8px; }
+.ms-item { display: flex; align-items: center; gap: 5px; padding: 3px 4px; border-radius: 4px; cursor: pointer; font-size: 11px; color: var(--white-2); }
+.ms-item:hover { background: var(--black-3); }
+.ms-item input[type=checkbox] { width: 12px; height: 12px; cursor: pointer; accent-color: var(--gold); }
+.ms-actions { display: flex; gap: 6px; border-top: 0.5px solid var(--border); padding-top: 8px; }
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--black-2); border: 0.5px solid var(--border-strong); border-radius: 12px; padding: 1.25rem; width: 300px; max-width: 92vw; }
+.modal h3 { font-size: 14px; font-weight: 500; margin-bottom: 12px; color: var(--gold); }
+.modal label { font-size: 12px; color: var(--gold-light); display: block; margin-top: 10px; margin-bottom: 3px; }
+.modal input, .modal select { width: 100%; font-size: 13px; padding: 6px 8px; border: 0.5px solid var(--border-strong); border-radius: 8px; background: var(--black-3); color: var(--white); font-family: inherit; }
+.modal input:focus, .modal select:focus { outline: none; border-color: var(--gold); }
+.modal-actions { display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 8px; margin-bottom: 1rem; }
+.stat { background: var(--black-2); border: 0.5px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+.stat-v { font-size: 22px; font-weight: 500; color: var(--gold); }
+.stat-l { font-size: 11px; color: var(--gold-light); margin-top: 2px; letter-spacing: 0.03em; }
+.sep { width: 1px; height: 20px; background: var(--border); }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--black-2); border: 0.5px solid var(--border-strong); border-radius: 8px; padding: 8px 16px; font-size: 13px; color: var(--gold-light); z-index: 200; display: none; white-space: nowrap; }
+.toast.show { display: block; }
+.ctx-menu { display: none; position: fixed; z-index: 300; background: var(--black-2); border: 0.5px solid var(--border-strong); border-radius: 8px; padding: 4px 0; min-width: 150px; }
+.ctx-menu.open { display: block; }
+.ctx-item { padding: 7px 14px; font-size: 12px; color: var(--white-2); cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.ctx-item:hover { background: var(--black-3); color: var(--gold-light); }
+.ctx-item.danger { color: #e07070; }
+.ctx-item.danger:hover { background: #2a1010; color: #f09090; }
+.ctx-sep { height: 0.5px; background: var(--border); margin: 4px 0; }
+.stag.copied { outline: 2px solid var(--gold); outline-offset: 1px; }
+input[type=text] { background: var(--black-3) !important; color: var(--white) !important; border-color: var(--border-strong) !important; }
+input[type=text]:focus { outline: none; border-color: var(--gold) !important; }
+input[type=text]::placeholder { color: var(--muted); }
+select { background: var(--black-3); color: var(--white); border: 0.5px solid var(--border-strong); border-radius: 8px; }
+
+/* ── Manual Popup ── */
+.manual-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); z-index:500; align-items:center; justify-content:center; }
+.manual-overlay.open { display:flex; }
+.manual-modal { background:var(--black-2); border:0.5px solid var(--border-strong); border-radius:14px; width:min(860px,96vw); height:min(90vh,820px); display:flex; flex-direction:column; overflow:hidden; }
+.manual-head { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; border-bottom:0.5px solid var(--border); flex-shrink:0; }
+.manual-head-title { font-size:15px; font-weight:500; color:var(--gold); letter-spacing:0.04em; }
+.manual-close { background:none; border:none; color:var(--muted); font-size:20px; cursor:pointer; line-height:1; padding:2px 6px; border-radius:6px; }
+.manual-close:hover { color:var(--gold); background:var(--black-3); }
+.manual-body { display:flex; flex:1; overflow:hidden; }
+.manual-nav { width:190px; flex-shrink:0; border-right:0.5px solid var(--border); overflow-y:auto; padding:12px 0; }
+.manual-nav-item { display:block; padding:8px 16px; font-size:12px; color:var(--muted); cursor:pointer; border-left:3px solid transparent; transition:all 0.15s; }
+.manual-nav-item:hover { color:var(--gold-light); background:var(--black-3); }
+.manual-nav-item.active { color:var(--gold); border-left-color:var(--gold); background:rgba(201,168,76,0.06); }
+.manual-content { flex:1; overflow-y:auto; padding:24px 28px; }
+.man-section { display:none; }
+.man-section.active { display:block; }
+.man-h1 { font-size:20px; font-weight:500; color:var(--gold); margin-bottom:8px; padding-bottom:8px; border-bottom:0.5px solid var(--border-strong); }
+.man-h2 { font-size:14px; font-weight:500; color:var(--gold-light); margin:20px 0 8px; }
+.man-h3 { font-size:13px; font-weight:500; color:#E0C080; margin:14px 0 6px; }
+.man-p { font-size:13px; color:var(--white-2); line-height:1.7; margin-bottom:10px; }
+.man-ul { margin:0 0 10px 0; padding-left:18px; }
+.man-ul li { font-size:13px; color:var(--gold-light); line-height:1.7; margin-bottom:4px; }
+.man-ul li span { color:var(--white-2); }
+.man-ol { margin:0 0 10px 0; padding-left:18px; }
+.man-ol li { font-size:13px; color:var(--white-2); line-height:1.7; margin-bottom:4px; }
+.man-note { background:rgba(201,168,76,0.07); border:0.5px solid var(--border-strong); border-radius:8px; padding:10px 14px; margin:12px 0; font-size:12px; color:var(--gold-light); }
+.man-note strong { color:var(--gold); }
+.man-img-wrap { background:var(--black-3); border:0.5px solid var(--border); border-radius:10px; padding:10px; margin:14px 0; overflow:hidden; }
+.man-kv { display:grid; grid-template-columns:auto 1fr; gap:4px 14px; margin-bottom:10px; }
+.man-kv .k { font-size:12px; color:var(--gold); font-weight:500; white-space:nowrap; }
+.man-kv .v { font-size:12px; color:var(--white-2); }
+.man-table { width:100%; border-collapse:collapse; margin:12px 0; font-size:12px; }
+.man-table th { background:rgba(201,168,76,0.12); color:var(--gold); padding:7px 10px; border:0.5px solid var(--border-strong); text-align:left; font-weight:500; }
+.man-table td { padding:7px 10px; border:0.5px solid var(--border); color:var(--white-2); }
+.man-table tr:nth-child(even) td { background:rgba(255,255,255,0.02); }
+.man-badge { display:inline-flex; align-items:center; gap:3px; background:rgba(201,168,76,0.12); color:var(--gold); border:0.5px solid var(--border-strong); border-radius:4px; padding:1px 7px; font-size:11px; }
+.man-sep { height:0.5px; background:var(--border); margin:20px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Room Height Matrix Dashboard</h1>
+
+<div class="stats" id="stats"></div>
+
+<div class="section">
+  <div class="filter-row">
+    <div class="filter-group">
+      <label>Search Room</label>
+      <input type="text" id="searchRoom" placeholder="พิมพ์ชื่อห้อง..." oninput="syncRoomSearch()" style="height:30px;font-size:12px;padding:4px 10px;border:0.5px solid rgba(201,168,76,0.6);border-radius:8px;background:#252525;color:#fff;font-family:inherit;width:150px;">
+    </div>
+    <div class="filter-group">
+      <label>Room</label>
+      <div class="dropdown-wrap" id="rDropWrap">
+        <div class="dd-trigger" onclick="toggleRDD()">
+          <span id="rFilterLabel">ทั้งหมด</span>
+          <span class="arrow">▾</span>
+        </div>
+        <div class="dd-panel" id="rDD">
+          <div class="ms-list" id="rList" style="grid-template-columns:1fr 1fr;"></div>
+          <div class="ms-actions">
+            <button class="btn" style="font-size:11px;height:26px;padding:2px 8px" onclick="selectAllR()">เลือกทั้งหมด</button>
+            <button class="btn" style="font-size:11px;height:26px;padding:2px 8px" onclick="clearAllR()">ล้าง</button>
+            <button class="btn btn-primary" style="font-size:11px;height:26px;padding:2px 8px;margin-left:auto" onclick="applyRoom()">ยืนยัน</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="filter-group">
+      <label>Height (m)</label>
+      <div class="dropdown-wrap" id="hDropWrap">
+        <div class="dd-trigger" onclick="toggleHDD()">
+          <span id="hFilterLabel">ทั้งหมด</span>
+          <span class="arrow">▾</span>
+        </div>
+        <div class="dd-panel" id="hDD">
+          <div class="dd-tabs">
+            <div class="dd-tab active" id="tabRange" onclick="switchTab('range')">ช่วง</div>
+            <div class="dd-tab" id="tabMulti" onclick="switchTab('multi')">เลือกหลายค่า</div>
+          </div>
+          <div class="dd-pane active" id="paneRange">
+            <div class="range-row">
+              <span>ตั้งแต่</span>
+              <input type="number" id="rangeMin" min="2.5" max="8.0" step="0.1" value="2.5" onchange="applyRange()">
+              <span>ถึง</span>
+              <input type="number" id="rangeMax" min="2.5" max="8.0" step="0.1" value="8.0" onchange="applyRange()">
+              <span>m</span>
+            </div>
+          </div>
+          <div class="dd-pane" id="paneMulti">
+            <div class="ms-list" id="msList"></div>
+            <div class="ms-actions">
+              <button class="btn" style="font-size:11px;height:26px;padding:2px 8px" onclick="selectAllH()">เลือกทั้งหมด</button>
+              <button class="btn" style="font-size:11px;height:26px;padding:2px 8px" onclick="clearAllH()">ล้าง</button>
+              <button class="btn btn-primary" style="font-size:11px;height:26px;padding:2px 8px;margin-left:auto" onclick="applyMulti()">ยืนยัน</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="filter-group">
+      <label>Search Series</label>
+      <input type="text" id="searchSeries" placeholder="พิมพ์ชื่อ series..." oninput="syncSeriesSearch()" style="height:30px;font-size:12px;padding:4px 10px;border:0.5px solid rgba(201,168,76,0.6);border-radius:8px;background:#252525;color:#fff;font-family:inherit;width:160px;">
+    </div>
+    <div class="filter-group">
+      <label>Series</label>
+      <div class="dropdown-wrap" id="sDropWrap">
+        <div class="dd-trigger" onclick="toggleSDD()">
+          <span id="sFilterLabel">ทั้งหมด</span>
+          <span class="arrow">▾</span>
+        </div>
+        <div class="dd-panel" id="sDD">
+          <div class="ms-list" id="sList" style="grid-template-columns:1fr 1fr;"></div>
+          <div class="ms-actions">
+            <button class="btn" style="font-size:11px;height:26px;padding:2px 8px" onclick="selectAllS()">เลือกทั้งหมด</button>
+            <button class="btn" style="font-size:11px;height:26px;padding:2px 8px" onclick="clearAllS()">ล้าง</button>
+            <button class="btn btn-primary" style="font-size:11px;height:26px;padding:2px 8px;margin-left:auto" onclick="applySeries()">ยืนยัน</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="filter-group">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn" onclick="resetFilters()">ล้าง filter</button>
+        <div class="sep"></div>
+        <button class="btn btn-primary" onclick="openModal('room')">+ Room</button>
+        <button class="btn btn-primary" onclick="openModal('entry')">+ Entry</button>
+        <div class="sep"></div>
+        <button class="btn" onclick="document.getElementById('xlsxInput').click()">Import .xlsx</button>
+        <input id="xlsxInput" type="file" accept=".xlsx" style="display:none" onchange="importXlsx(this)">
+        <button class="btn" onclick="exportXlsx()">Export .xlsx</button>
+        <div class="sep"></div>
+        <button class="btn" onclick="openManual()" style="border-color:var(--gold);color:var(--gold);">? คู่มือ</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="matrix-scroll">
+    <table id="tbl"></table>
+  </div>
+</div>
+
+</div>
+
+<div class="section" id="chartsSection">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+    <span style="font-size:13px;font-weight:500;color:#C9A84C;letter-spacing:0.04em;">กราฟแสดงผล</span>
+    <div style="display:flex;gap:6px;">
+      <button class="btn" id="chartTab1" onclick="switchChart('height')" style="font-size:11px;height:26px;padding:2px 10px;background:#1e1800;color:#C9A84C;border-color:#C9A84C;">Series ต่อ Height</button>
+      <button class="btn" id="chartTab2" onclick="switchChart('room')" style="font-size:11px;height:26px;padding:2px 10px;">Series ต่อ Room</button>
+      <button class="btn" id="chartTab3" onclick="switchChart('heatmap')" style="font-size:11px;height:26px;padding:2px 10px;">Heatmap</button>
+    </div>
+  </div>
+  <div style="position:relative;width:100%;height:320px;">
+    <canvas id="mainChart" role="img" aria-label="Chart showing series distribution"></canvas>
+  </div>
+</div>
+
+<div class="manual-overlay" id="manualOverlay">
+<div class="manual-modal">
+  <div class="manual-head">
+    <span class="manual-head-title">? คู่มือการใช้งาน — Room Height Matrix Dashboard</span>
+    <button class="manual-close" onclick="closeManual()">✕</button>
+  </div>
+  <div class="manual-body">
+    <div class="manual-nav" id="manNav">
+      <div class="manual-nav-item active" onclick="showSection(0)">1. ภาพรวมระบบ</div>
+      <div class="manual-nav-item" onclick="showSection(1)">2. การเริ่มต้นใช้งาน</div>
+      <div class="manual-nav-item" onclick="showSection(2)">3. การจัดการห้อง</div>
+      <div class="manual-nav-item" onclick="showSection(3)">4. การจัดการ Series</div>
+      <div class="manual-nav-item" onclick="showSection(4)">5. Drag & Drop</div>
+      <div class="manual-nav-item" onclick="showSection(5)">6. Context Menu</div>
+      <div class="manual-nav-item" onclick="showSection(6)">7. การกรองข้อมูล</div>
+      <div class="manual-nav-item" onclick="showSection(7)">8. กราฟแสดงผล</div>
+      <div class="manual-nav-item" onclick="showSection(8)">9. Import / Export</div>
+      <div class="manual-nav-item" onclick="showSection(9)">10. เคล็ดลับ</div>
+    </div>
+    <div class="manual-content">
+
+      <!-- 0: Overview -->
+      <div class="man-section active" id="msec0">
+        <div class="man-h1">1. ภาพรวมระบบ</div>
+        <div class="man-p">Room Height Matrix Dashboard คือเครื่องมือบริหารจัดการข้อมูลห้องและ Ceiling Height พร้อม Series Name แสดงผลในรูปแบบตาราง Matrix ที่ใช้งานง่าย รองรับ Import/Export Excel และมีกราฟวิเคราะห์ข้อมูลในตัว</div>
+        <div class="man-img-wrap">
+          <svg viewBox="0 0 700 320" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;">
+            <rect width="700" height="320" fill="#0D0D0D" rx="6"/>
+            <!-- title bar -->
+            <rect width="700" height="44" fill="#1A1A1A"/>
+            <text x="14" y="27" font-size="14" font-weight="bold" fill="#C9A84C" font-family="sans-serif">Room Height Matrix Dashboard</text>
+            <rect x="620" y="10" width="66" height="24" rx="5" fill="#1e1800" stroke="#C9A84C" stroke-width="0.5"/>
+            <text x="630" y="26" font-size="11" fill="#C9A84C" font-family="sans-serif">? คู่มือ</text>
+            <!-- stat cards -->
+            <rect x="10" y="54" width="156" height="52" rx="6" fill="#252525" stroke="#C9A84C" stroke-width="0.5" stroke-opacity="0.4"/>
+            <text x="22" y="80" font-size="20" font-weight="bold" fill="#C9A84C" font-family="sans-serif">4</text>
+            <text x="22" y="96" font-size="10" fill="#E8D5A3" font-family="sans-serif">ห้องทั้งหมด</text>
+            <rect x="174" y="54" width="156" height="52" rx="6" fill="#252525" stroke="#C9A84C" stroke-width="0.5" stroke-opacity="0.4"/>
+            <text x="186" y="80" font-size="20" font-weight="bold" fill="#C9A84C" font-family="sans-serif">12</text>
+            <text x="186" y="96" font-size="10" fill="#E8D5A3" font-family="sans-serif">รายการ</text>
+            <rect x="338" y="54" width="156" height="52" rx="6" fill="#252525" stroke="#C9A84C" stroke-width="0.5" stroke-opacity="0.4"/>
+            <text x="350" y="80" font-size="20" font-weight="bold" fill="#C9A84C" font-family="sans-serif">6</text>
+            <text x="350" y="96" font-size="10" fill="#E8D5A3" font-family="sans-serif">Series</text>
+            <rect x="502" y="54" width="188" height="52" rx="6" fill="#252525" stroke="#C9A84C" stroke-width="0.5" stroke-opacity="0.4"/>
+            <text x="514" y="80" font-size="20" font-weight="bold" fill="#C9A84C" font-family="sans-serif">10</text>
+            <text x="514" y="96" font-size="10" fill="#E8D5A3" font-family="sans-serif">Height columns</text>
+            <!-- filter bar -->
+            <rect y="116" width="700" height="38" fill="#1A1A1A"/>
+            <rect x="10" y="122" width="100" height="26" rx="5" fill="#252525" stroke="#C9A84C" stroke-width="0.5" stroke-opacity="0.5"/>
+            <text x="18" y="139" font-size="10" fill="#888" font-family="sans-serif">Search Room...</text>
+            <rect x="118" y="122" width="90" height="26" rx="5" fill="#252525" stroke="#C9A84C" stroke-width="0.5" stroke-opacity="0.5"/>
+            <text x="128" y="139" font-size="10" fill="#E8D5A3" font-family="sans-serif">Room ▾</text>
+            <rect x="216" y="122" width="100" height="26" rx="5" fill="#252525" stroke="#C9A84C" stroke-width="0.5" stroke-opacity="0.5"/>
+            <text x="226" y="139" font-size="10" fill="#E8D5A3" font-family="sans-serif">Height (m) ▾</text>
+            <rect x="324" y="122" width="90" height="26" rx="5" fill="#252525" stroke="#C9A84C" stroke-width="0.5" stroke-opacity="0.5"/>
+            <text x="334" y="139" font-size="10" fill="#E8D5A3" font-family="sans-serif">Series ▾</text>
+            <rect x="430" y="122" width="60" height="26" rx="5" fill="#1e1800" stroke="#C9A84C" stroke-width="0.5"/>
+            <text x="440" y="139" font-size="10" fill="#C9A84C" font-family="sans-serif">+ Room</text>
+            <rect x="498" y="122" width="60" height="26" rx="5" fill="#1e1800" stroke="#C9A84C" stroke-width="0.5"/>
+            <text x="508" y="139" font-size="10" fill="#C9A84C" font-family="sans-serif">+ Entry</text>
+            <!-- table header -->
+            <rect y="164" width="700" height="26" fill="#252525"/>
+            <text x="8" y="181" font-size="10" font-weight="bold" fill="#C9A84C" font-family="sans-serif">Room \ Height (m)</text>
+            <line x1="130" y1="164" x2="130" y2="320" stroke="#C9A84C" stroke-width="0.3" stroke-opacity="0.3"/>
+            <text x="138" y="181" font-size="10" fill="#C9A84C" font-family="sans-serif">2.5</text>
+            <line x1="200" y1="164" x2="200" y2="320" stroke="#C9A84C" stroke-width="0.3" stroke-opacity="0.3"/>
+            <text x="208" y="181" font-size="10" fill="#C9A84C" font-family="sans-serif">2.6</text>
+            <line x1="270" y1="164" x2="270" y2="320" stroke="#C9A84C" stroke-width="0.3" stroke-opacity="0.3"/>
+            <text x="278" y="181" font-size="10" fill="#C9A84C" font-family="sans-serif">2.7</text>
+            <line x1="340" y1="164" x2="340" y2="320" stroke="#C9A84C" stroke-width="0.3" stroke-opacity="0.3"/>
+            <text x="348" y="181" font-size="10" fill="#C9A84C" font-family="sans-serif">2.8</text>
+            <line x1="410" y1="164" x2="410" y2="320" stroke="#C9A84C" stroke-width="0.3" stroke-opacity="0.3"/>
+            <text x="418" y="181" font-size="10" fill="#C9A84C" font-family="sans-serif">2.9</text>
+            <line x1="480" y1="164" x2="480" y2="320" stroke="#C9A84C" stroke-width="0.3" stroke-opacity="0.3"/>
+            <text x="488" y="181" font-size="10" fill="#C9A84C" font-family="sans-serif">3.0</text>
+            <!-- row 1 -->
+            <rect y="190" width="130" height="42" fill="#1A1A1A"/>
+            <text x="8" y="214" font-size="11" fill="#FFF" font-family="sans-serif">Room A</text>
+            <text x="110" y="214" font-size="9" fill="#C9A84C" font-family="sans-serif">✎</text>
+            <rect x="134" y="194" width="58" height="16" rx="3" fill="#1e1800" stroke="#C9A84C" stroke-width="0.5"/>
+            <text x="139" y="205" font-size="9" fill="#C9A84C" font-family="sans-serif">A2.5-1</text>
+            <rect x="134" y="212" width="58" height="16" rx="3" fill="#1e1800" stroke="#C9A84C" stroke-width="0.5"/>
+            <text x="139" y="223" font-size="9" fill="#C9A84C" font-family="sans-serif">A2.5-2</text>
+            <rect x="204" y="194" width="58" height="16" rx="3" fill="#1e1800" stroke="#C9A84C" stroke-width="0.5"/>
+            <text x="209" y="205" font-size="9" fill="#C9A84C" font-family="sans-serif">A2.6-1</text>
+            <line x1="0" y1="232" x2="700" y2="232" stroke="#C9A84C" stroke-width="0.3" stroke-opacity="0.2"/>
+            <!-- row 2 -->
+            <rect y="232" width="130" height="42" fill="#1A1A1A"/>
+            <text x="8" y="256" font-size="11" fill="#FFF" font-family="sans-serif">Room B</text>
+            <rect x="134" y="236" width="58" height="16" rx="3" fill="#1e1800" stroke="#C9A84C" stroke-width="0.5"/>
+            <text x="139" y="247" font-size="9" fill="#C9A84C" font-family="sans-serif">B2.5-1</text>
+            <rect x="344" y="236" width="58" height="16" rx="3" fill="#1e1800" stroke="#C9A84C" stroke-width="0.5"/>
+            <text x="349" y="247" font-size="9" fill="#C9A84C" font-family="sans-serif">B2.8-1</text>
+            <line x1="0" y1="274" x2="700" y2="274" stroke="#C9A84C" stroke-width="0.3" stroke-opacity="0.2"/>
+            <!-- row 3 -->
+            <rect y="274" width="130" height="42" fill="#1A1A1A"/>
+            <text x="8" y="298" font-size="11" fill="#FFF" font-family="sans-serif">Room C</text>
+            <rect x="274" y="278" width="58" height="16" rx="3" fill="#1e1800" stroke="#C9A84C" stroke-width="0.5"/>
+            <text x="279" y="289" font-size="9" fill="#C9A84C" font-family="sans-serif">C2.7-1</text>
+            <rect x="484" y="278" width="58" height="16" rx="3" fill="#1e1800" stroke="#C9A84C" stroke-width="0.5"/>
+            <text x="489" y="289" font-size="9" fill="#C9A84C" font-family="sans-serif">C3.0-1</text>
+          </svg>
+        </div>
+        <div class="man-h2">องค์ประกอบหลัก</div>
+        <ul class="man-ul">
+          <li><span class="man-badge">Stat Cards</span> <span>— แสดงสรุปจำนวนห้อง รายการ Series และ Height ที่ใช้งาน</span></li>
+          <li><span class="man-badge">Filter Bar</span> <span>— กรองด้วย Room, Height, Series แบบ multi-select พร้อม Search textbox</span></li>
+          <li><span class="man-badge">Matrix Table</span> <span>— ตาราง Room × Height พร้อม Series ในแต่ละ Cell รองรับ Drag & Drop</span></li>
+          <li><span class="man-badge">Charts</span> <span>— กราฟวิเคราะห์ 3 รูปแบบ อัปเดตตาม filter อัตโนมัติ</span></li>
+          <li><span class="man-badge">Import / Export</span> <span>— รองรับ .xlsx ในรูปแบบเดิม</span></li>
+        </ul>
+      </div>
+
+      <!-- 1: Getting Started -->
+      <div class="man-section" id="msec1">
+        <div class="man-h1">2. การเริ่มต้นใช้งาน</div>
+        <div class="man-h2">เปิดไฟล์</div>
+        <ol class="man-ol">
+          <li>ดับเบิลคลิกไฟล์ <strong>matrix_dashboard.html</strong> ด้วยเบราว์เซอร์ (Chrome, Edge, Firefox)</li>
+          <li>รอให้ Library โหลดจาก CDN — ต้องการอินเทอร์เน็ตครั้งแรก</li>
+          <li>ระบบแสดงข้อมูลตัวอย่าง Room A / Room B ให้เห็นภาพรวม</li>
+        </ol>
+        <div class="man-note"><strong>หมายเหตุ:</strong> ข้อมูลเก็บใน RAM เท่านั้น ปิดเบราว์เซอร์แล้วข้อมูลหาย — Export ก่อนออกเสมอ</div>
+        <div class="man-h2">นำเข้าข้อมูลจาก Excel</div>
+        <div class="man-p">กดปุ่ม <span class="man-badge">Import .xlsx</span> เพื่อโหลดข้อมูลจากไฟล์ที่มีอยู่</div>
+        <table class="man-table">
+          <tr><th>Sheet</th><th>Columns</th><th>หมายเหตุ</th></tr>
+          <tr><td>Matrix</td><td>ID, Room Name</td><td>ข้อมูลห้องทั้งหมด</td></tr>
+          <tr><td>60012 MatrixData</td><td>MatrixId, CeilingHeight, Series Name</td><td>ข้อมูล Series ทั้งหมด</td></tr>
+        </table>
+        <div class="man-note"><strong>หมายเหตุ:</strong> ระบบอ่านค่า String และตัวเลขได้ทั้งสองแบบโดยอัตโนมัติ</div>
+      </div>
+
+      <!-- 2: Room Management -->
+      <div class="man-section" id="msec2">
+        <div class="man-h1">3. การจัดการห้อง (Room)</div>
+        <div class="man-h2">เพิ่มห้องใหม่</div>
+        <ol class="man-ol">
+          <li>กดปุ่ม <span class="man-badge">+ Room</span> ในแถบ Filter</li>
+          <li>พิมพ์ชื่อห้องในช่อง Room Name</li>
+          <li>กด <strong>บันทึก</strong></li>
+        </ol>
+        <div class="man-h2">แก้ไขหรือลบห้อง</div>
+        <div class="man-p">กดไอคอน <strong style="color:var(--gold)">✎</strong> ด้านขวาของชื่อห้องในตาราง เพื่อเปิดหน้าต่างแก้ไข</div>
+        <ul class="man-ul">
+          <li><span>เปลี่ยนชื่อ แล้วกด บันทึก</span></li>
+          <li><span>กดปุ่ม ลบ เพื่อลบห้องพร้อม Series ทั้งหมดในห้องนั้น</span></li>
+        </ul>
+        <div class="man-note"><strong>ข้อควรระวัง:</strong> การลบห้องจะลบ Series ทุกตัวในห้องนั้นไปด้วยโดยไม่สามารถ Undo ได้</div>
+      </div>
+
+      <!-- 3: Series Entry -->
+      <div class="man-section" id="msec3">
+        <div class="man-h1">4. การจัดการ Series Entry</div>
+        <div class="man-h2">เพิ่ม Series ใน Cell</div>
+        <div class="man-p">มี 2 วิธี:</div>
+        <ul class="man-ul">
+          <li><span class="man-badge">+</span> <span>กดปุ่ม + ภายใน Cell — เปิด modal พร้อม Room และ Height ที่เลือกไว้แล้ว</span></li>
+          <li><span class="man-badge">+ Entry</span> <span>กดปุ่มในแถบ Filter — เปิด modal ว่างให้เลือก Room, Height, Series เอง</span></li>
+        </ul>
+        <div class="man-note"><strong>การตรวจซ้ำ:</strong> ระบบตรวจสอบ Series ซ้ำใน Cell เดียวกันอัตโนมัติ หากซ้ำจะแสดง Toast แจ้งเตือนและไม่บันทึก</div>
+        <div class="man-h2">แก้ไข Series</div>
+        <div class="man-p">คลิกซ้ายที่ Series Tag เพื่อเปิด modal แก้ไข Room, Height, หรือชื่อ Series ได้</div>
+        <div class="man-h2">ลบ Series</div>
+        <div class="man-p">กดปุ่ม <strong style="color:#e07070">×</strong> ข้างขวาของ Series Tag เพื่อลบทันที</div>
+      </div>
+
+      <!-- 4: Drag Drop -->
+      <div class="man-section" id="msec4">
+        <div class="man-h1">5. Drag & Drop</div>
+        <div class="man-p">ลาก Series Tag จาก Cell หนึ่งไปวางยัง Cell อื่นได้โดยตรง</div>
+        <div class="man-img-wrap">
+          <svg viewBox="0 0 580 160" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;">
+            <rect width="580" height="160" fill="#0D0D0D" rx="6"/>
+            <!-- source cell -->
+            <rect x="20" y="24" width="170" height="80" rx="6" fill="#1A1A1A" stroke="#C9A84C" stroke-width="0.5" stroke-opacity="0.5"/>
+            <text x="30" y="44" font-size="10" fill="#E8D5A3" font-family="sans-serif">Room A  |  2.5m</text>
+            <rect x="30" y="52" width="90" height="22" rx="3" fill="#1e1800" stroke="#C9A84C" stroke-width="1" opacity="0.5"/>
+            <text x="38" y="67" font-size="10" fill="#C9A84C" font-family="sans-serif">A2.5-1</text>
+            <text x="115" y="67" font-size="9" fill="#e07070" font-family="sans-serif">×</text>
+            <!-- floating tag -->
+            <rect x="210" y="44" width="90" height="22" rx="3" fill="#1e1800" stroke="#C9A84C" stroke-width="1.5"/>
+            <text x="220" y="59" font-size="10" font-weight="bold" fill="#C9A84C" font-family="sans-serif">A2.5-1</text>
+            <!-- dashed arrow -->
+            <line x1="196" y1="66" x2="210" y2="66" stroke="#C9A84C" stroke-width="1.5" stroke-dasharray="5,3"/>
+            <line x1="300" y1="66" x2="346" y2="66" stroke="#C9A84C" stroke-width="1.5" stroke-dasharray="5,3"/>
+            <polygon points="358,60 346,66 358,72" fill="#C9A84C"/>
+            <!-- target cell highlighted -->
+            <rect x="370" y="24" width="190" height="80" rx="6" fill="#2a2200" stroke="#C9A84C" stroke-width="2" stroke-dasharray="4,3"/>
+            <text x="380" y="44" font-size="10" fill="#E8D5A3" font-family="sans-serif">Room B  |  3.0m</text>
+            <text x="418" y="72" font-size="11" fill="#C9A84C" font-family="sans-serif" opacity="0.7">วางที่นี่...</text>
+            <!-- labels -->
+            <text x="60" y="125" font-size="11" fill="#E8D5A3" font-family="sans-serif">เซลล์ต้นทาง</text>
+            <text x="400" y="125" font-size="11" fill="#E8D5A3" font-family="sans-serif">เซลล์ปลายทาง</text>
+            <text x="390" y="143" font-size="10" fill="#C9A84C" font-family="sans-serif">(highlight เส้นประสีทอง)</text>
+          </svg>
+        </div>
+        <ol class="man-ol">
+          <li>คลิกค้างที่ Series Tag — cursor เปลี่ยนเป็นรูปมือจับ</li>
+          <li>ลากไปยัง Cell ปลายทาง — Cell จะ highlight เส้นประสีทอง</li>
+          <li>ปล่อยเมาส์เพื่อย้าย Series</li>
+        </ol>
+        <div class="man-note"><strong>หมายเหตุ:</strong> หาก Cell ปลายทางมี Series นั้นอยู่แล้ว ระบบจะแสดง Toast แจ้งว่าซ้ำและไม่ย้าย</div>
+      </div>
+
+      <!-- 5: Context Menu -->
+      <div class="man-section" id="msec5">
+        <div class="man-h1">6. Context Menu (คลิกขวา)</div>
+        <div class="man-p">คลิกขวาที่ Series Tag หรือ Cell เพื่อเปิดเมนูตัวเลือก</div>
+        <div class="man-img-wrap">
+          <svg viewBox="0 0 460 260" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;">
+            <rect width="460" height="260" fill="#0D0D0D" rx="6"/>
+            <!-- series tag -->
+            <rect x="30" y="30" width="130" height="32" rx="4" fill="#1e1800" stroke="#C9A84C" stroke-width="1"/>
+            <text x="46" y="51" font-size="14" font-weight="bold" fill="#C9A84C" font-family="sans-serif">A2.5-1</text>
+            <text x="147" y="51" font-size="12" fill="#e07070" font-family="sans-serif">×</text>
+            <circle cx="166" cy="62" r="4" fill="white" opacity="0.7"/>
+            <!-- menu panel -->
+            <rect x="162" y="56" width="220" height="174" rx="6" fill="#1A1A1A" stroke="#C9A84C" stroke-width="0.5" stroke-opacity="0.7"/>
+            <text x="174" y="78" font-size="12" fill="#E8D5A3" font-family="sans-serif">⬛  Copy series นี้</text>
+            <text x="174" y="100" font-size="12" fill="#E8D5A3" font-family="sans-serif">⬛  Copy ทั้ง cell (2)</text>
+            <text x="174" y="122" font-size="12" fill="#E8D5A3" font-family="sans-serif">《  Paste "A2.5-1"</text>
+            <line x1="166" y1="132" x2="378" y2="132" stroke="#C9A84C" stroke-width="0.5" stroke-opacity="0.3"/>
+            <text x="174" y="150" font-size="12" fill="#E8D5A3" font-family="sans-serif">✎  แก้ไข</text>
+            <line x1="166" y1="160" x2="378" y2="160" stroke="#C9A84C" stroke-width="0.5" stroke-opacity="0.3"/>
+            <text x="174" y="178" font-size="12" fill="#e07070" font-family="sans-serif">✕  ลบ series นี้</text>
+            <text x="174" y="218" font-size="11" fill="#E8D5A3" font-family="sans-serif">คลิกขวาที่ Series Tag</text>
+          </svg>
+        </div>
+        <div class="man-h2">เมนูเมื่อคลิกขวาที่ Series Tag</div>
+        <ul class="man-ul">
+          <li><strong>Copy series นี้</strong> <span>— copy เฉพาะ series ที่คลิก</span></li>
+          <li><strong>Copy ทั้ง cell (N)</strong> <span>— copy ทุก series ใน cell พร้อมกัน (แสดงเมื่อมีมากกว่า 1)</span></li>
+          <li><strong>Paste</strong> <span>— วาง series จาก Buffer ใน cell นี้</span></li>
+          <li><strong>แก้ไข</strong> <span>— เปิด modal แก้ไขข้อมูล</span></li>
+          <li><strong>ลบ series นี้</strong> <span>— ลบทันที</span></li>
+        </ul>
+        <div class="man-h2">เมนูเมื่อคลิกขวาที่ Cell ว่าง</div>
+        <ul class="man-ul">
+          <li><span>Copy ทั้ง Cell (ถ้ามีข้อมูล)</span></li>
+          <li><span>Paste series จาก Buffer</span></li>
+          <li><span>+ เพิ่ม Series ใน Cell นี้</span></li>
+        </ul>
+        <div class="man-note"><strong>Paste ซ้ำ:</strong> ระบบข้ามเฉพาะ series ที่ซ้ำและแสดง Toast ว่า paste ได้กี่ตัว ข้ามกี่ตัว</div>
+      </div>
+
+      <!-- 6: Filter -->
+      <div class="man-section" id="msec6">
+        <div class="man-h1">7. การกรองข้อมูล (Filter)</div>
+        <div class="man-img-wrap">
+          <svg viewBox="0 0 540 200" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;">
+            <rect width="540" height="200" fill="#0D0D0D" rx="6"/>
+            <rect width="540" height="48" fill="#1A1A1A"/>
+            <!-- search -->
+            <rect x="10" y="9" width="130" height="30" rx="6" fill="#252525" stroke="#C9A84C" stroke-width="0.5" stroke-opacity="0.6"/>
+            <text x="20" y="28" font-size="10" fill="#888" font-family="sans-serif">Search Room...</text>
+            <!-- room dropdown -->
+            <rect x="148" y="9" width="150" height="30" rx="6" fill="#252525" stroke="#C9A84C" stroke-width="0.5"/>
+            <text x="158" y="28" font-size="11" fill="#E8D5A3" font-family="sans-serif">2 ห้อง</text>
+            <text x="285" y="28" font-size="11" fill="#C9A84C" font-family="sans-serif">▾</text>
+            <!-- panel -->
+            <rect x="148" y="44" width="250" height="140" rx="8" fill="#1A1A1A" stroke="#C9A84C" stroke-width="0.5" stroke-opacity="0.7"/>
+            <!-- checkboxes -->
+            <rect x="160" y="56" width="13" height="13" rx="2" fill="#C9A84C"/>
+            <text x="161" y="66" font-size="9" font-weight="bold" fill="#000" font-family="sans-serif">✓</text>
+            <text x="178" y="66" font-size="11" fill="#E8D5A3" font-family="sans-serif">Room A</text>
+            <rect x="268" y="56" width="13" height="13" rx="2" fill="#C9A84C"/>
+            <text x="269" y="66" font-size="9" font-weight="bold" fill="#000" font-family="sans-serif">✓</text>
+            <text x="286" y="66" font-size="11" fill="#E8D5A3" font-family="sans-serif">Room B</text>
+            <rect x="160" y="76" width="13" height="13" rx="2" fill="#252525" stroke="#C9A84C" stroke-width="0.5"/>
+            <text x="178" y="86" font-size="11" fill="#E8D5A3" font-family="sans-serif">Room C</text>
+            <rect x="268" y="76" width="13" height="13" rx="2" fill="#252525" stroke="#C9A84C" stroke-width="0.5"/>
+            <text x="286" y="86" font-size="11" fill="#E8D5A3" font-family="sans-serif">Room D</text>
+            <rect x="160" y="96" width="13" height="13" rx="2" fill="#C9A84C"/>
+            <text x="161" y="106" font-size="9" font-weight="bold" fill="#000" font-family="sans-serif">✓</text>
+            <text x="178" y="106" font-size="11" fill="#E8D5A3" font-family="sans-serif">Room E</text>
+            <line x1="152" y1="120" x2="394" y2="120" stroke="#C9A84C" stroke-width="0.5" stroke-opacity="0.3"/>
+            <!-- action buttons -->
+            <rect x="156" y="126" width="80" height="22" rx="4" fill="#252525" stroke="#C9A84C" stroke-width="0.5" stroke-opacity="0.5"/>
+            <text x="162" y="141" font-size="10" fill="#E8D5A3" font-family="sans-serif">เลือกทั้งหมด</text>
+            <rect x="244" y="126" width="44" height="22" rx="4" fill="#252525" stroke="#C9A84C" stroke-width="0.5" stroke-opacity="0.5"/>
+            <text x="254" y="141" font-size="10" fill="#E8D5A3" font-family="sans-serif">ล้าง</text>
+            <rect x="296" y="126" width="50" height="22" rx="4" fill="#1e1800" stroke="#C9A84C" stroke-width="0.5"/>
+            <text x="302" y="141" font-size="10" fill="#C9A84C" font-family="sans-serif">ยืนยัน</text>
+          </svg>
+        </div>
+        <div class="man-h2">Search Textbox</div>
+        <ul class="man-ul">
+          <li><strong>Search Room</strong> <span>— พิมพ์ชื่อห้องกรอง Row ในตารางแบบ Real-time</span></li>
+          <li><strong>Search Series</strong> <span>— พิมพ์ชื่อ Series กรอง Entry ที่ตรง</span></li>
+        </ul>
+        <div class="man-h2">Multi-select Dropdown (Room, Height, Series)</div>
+        <ol class="man-ol">
+          <li>กดปุ่ม dropdown เพื่อเปิดรายการ</li>
+          <li>Tick checkbox ที่ต้องการ — กด "เลือกทั้งหมด" หรือ "ล้าง" ได้</li>
+          <li>กด <strong>ยืนยัน</strong> เพื่อ apply filter</li>
+        </ol>
+        <div class="man-h2">Filter Height แบบช่วง (Range)</div>
+        <div class="man-p">ใน dropdown Height มีแท็บ "ช่วง" ให้ตั้งค่าเริ่มต้นและสิ้นสุด เช่น 2.5m–4.0m จะแสดงเฉพาะ column ในช่วงนั้น</div>
+        <div class="man-h2">ล้าง Filter ทั้งหมด</div>
+        <div class="man-p">กดปุ่ม <span class="man-badge">ล้าง filter</span> เพื่อ reset ทุก filter รวมถึง Search Textbox กลับสู่ค่าเริ่มต้น</div>
+      </div>
+
+      <!-- 7: Charts -->
+      <div class="man-section" id="msec7">
+        <div class="man-h1">8. กราฟแสดงผล</div>
+        <div class="man-p">กราฟอัปเดตอัตโนมัติตาม Filter ที่ตั้งไว้ กดปุ่มแท็บเพื่อสลับโหมด</div>
+        <div class="man-img-wrap">
+          <svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" style="width:100%;display:block;">
+            <rect width="600" height="200" fill="#0D0D0D" rx="6"/>
+            <rect x="8" y="8" width="584" height="184" rx="8" fill="#1A1A1A" stroke="#C9A84C" stroke-width="0.5" stroke-opacity="0.4"/>
+            <!-- tabs -->
+            <rect x="18" y="16" width="130" height="24" rx="12" fill="#1e1800" stroke="#C9A84C" stroke-width="0.5"/>
+            <text x="28" y="32" font-size="11" fill="#C9A84C" font-family="sans-serif">Series ต่อ Height</text>
+            <rect x="156" y="16" width="120" height="24" rx="12" fill="#252525" stroke="#C9A84C" stroke-width="0.5" stroke-opacity="0.4"/>
+            <text x="166" y="32" font-size="11" fill="#E8D5A3" font-family="sans-serif">Series ต่อ Room</text>
+            <rect x="284" y="16" width="70" height="24" rx="12" fill="#252525" stroke="#C9A84C" stroke-width="0.5" stroke-opacity="0.4"/>
+            <text x="296" y="32" font-size="11" fill="#E8D5A3" font-family="sans-serif">Heatmap</text>
+            <!-- bar chart -->
+            <line x1="48" y1="50" x2="48" y2="170" stroke="#8B6914" stroke-width="1"/>
+            <line x1="48" y1="170" x2="580" y2="170" stroke="#8B6914" stroke-width="1"/>
+            <!-- grid -->
+            <line x1="48" y1="130" x2="580" y2="130" stroke="#C9A84C" stroke-width="0.3" stroke-opacity="0.2"/>
+            <line x1="48" y1="90" x2="580" y2="90" stroke="#C9A84C" stroke-width="0.3" stroke-opacity="0.2"/>
+            <line x1="48" y1="50" x2="580" y2="50" stroke="#C9A84C" stroke-width="0.3" stroke-opacity="0.2"/>
+            <!-- bars -->
+            <rect x="56" y="90" width="36" height="80" rx="3" fill="#C9A84C" opacity="0.8"/>
+            <text x="60" y="185" font-size="8" fill="#888" font-family="sans-serif">2.5m</text>
+            <rect x="100" y="130" width="36" height="40" rx="3" fill="#E8D5A3" opacity="0.8"/>
+            <text x="104" y="185" font-size="8" fill="#888" font-family="sans-serif">2.6m</text>
+            <rect x="144" y="110" width="36" height="60" rx="3" fill="#8B6914" opacity="0.8"/>
+            <text x="148" y="185" font-size="8" fill="#888" font-family="sans-serif">2.7m</text>
+            <rect x="188" y="170" width="36" height="0" rx="3" fill="#F0C060" opacity="0.8"/>
+            <text x="192" y="185" font-size="8" fill="#888" font-family="sans-serif">2.8m</text>
+            <rect x="232" y="130" width="36" height="40" rx="3" fill="#A07828" opacity="0.8"/>
+            <text x="236" y="185" font-size="8" fill="#888" font-family="sans-serif">2.9m</text>
+            <rect x="276" y="110" width="36" height="60" rx="3" fill="#D4B070" opacity="0.8"/>
+            <text x="280" y="185" font-size="8" fill="#888" font-family="sans-serif">3.0m</text>
+            <rect x="320" y="130" width="36" height="40" rx="3" fill="#C9A84C" opacity="0.6"/>
+            <text x="324" y="185" font-size="8" fill="#888" font-family="sans-serif">3.1m</text>
+            <rect x="364" y="90" width="36" height="80" rx="3" fill="#E8D5A3" opacity="0.6"/>
+            <text x="368" y="185" font-size="8" fill="#888" font-family="sans-serif">3.2m</text>
+            <!-- y labels -->
+            <text x="28" y="54" font-size="9" fill="#888" font-family="sans-serif">4</text>
+            <text x="28" y="94" font-size="9" fill="#888" font-family="sans-serif">3</text>
+            <text x="28" y="134" font-size="9" fill="#888" font-family="sans-serif">2</text>
+            <text x="28" y="174" font-size="9" fill="#888" font-family="sans-serif">0</text>
+          </svg>
+        </div>
+        <div class="man-h2">3 โหมดกราฟ</div>
+        <div class="man-kv">
+          <span class="k">Series ต่อ Height</span><span class="v">Bar chart แนวตั้ง แสดงจำนวน Series ในแต่ละค่า Ceiling Height</span>
+          <span class="k">Series ต่อ Room</span><span class="v">Bar chart แนวนอน เปรียบเทียบจำนวน Series ในแต่ละห้อง</span>
+          <span class="k">Heatmap</span><span class="v">Grouped bar chart แสดงความสัมพันธ์ Room × Height พร้อมกัน แต่ละสีแทนห้องหนึ่ง</span>
+        </div>
+      </div>
+
+      <!-- 8: Import/Export -->
+      <div class="man-section" id="msec8">
+        <div class="man-h1">9. Import / Export</div>
+        <div class="man-h2">Import .xlsx</div>
+        <ol class="man-ol">
+          <li>กดปุ่ม <span class="man-badge">Import .xlsx</span></li>
+          <li>เลือกไฟล์ Excel ที่มีโครงสร้าง 2 sheets</li>
+          <li>ระบบโหลดข้อมูลและแสดง Toast แจ้งจำนวนห้องและ entries ที่นำเข้า</li>
+        </ol>
+        <div class="man-h2">Export .xlsx</div>
+        <ol class="man-ol">
+          <li>กดปุ่ม <span class="man-badge">Export .xlsx</span></li>
+          <li>ไฟล์ Matrix.xlsx จะดาวน์โหลดทันที</li>
+        </ol>
+        <table class="man-table">
+          <tr><th>Sheet</th><th>Columns</th><th>หมายเหตุ</th></tr>
+          <tr><td>Matrix</td><td>ID, Room Name</td><td>ข้อมูลห้องทั้งหมด</td></tr>
+          <tr><td>60012 MatrixData</td><td>MatrixId, CeilingHeight, Series Name</td><td>ข้อมูล Series ทั้งหมด</td></tr>
+        </table>
+        <div class="man-note"><strong>หมายเหตุ:</strong> รูปแบบตรงกับไฟล์ต้นฉบับ สามารถนำเข้ากลับได้ทันที</div>
+      </div>
+
+      <!-- 9: Tips -->
+      <div class="man-section" id="msec9">
+        <div class="man-h1">10. เคล็ดลับและข้อควรระวัง</div>
+        <div class="man-h2">เคล็ดลับ</div>
+        <ul class="man-ul">
+          <li><span>ใช้ Search textbox ร่วมกับ Multi-select dropdown เพื่อ filter รวดเร็วขึ้น</span></li>
+          <li><span>Copy ทั้ง cell แล้ว Paste ใน Room หรือ Height อื่น ประหยัดเวลากรอกซ้ำ</span></li>
+          <li><span>กราฟ Heatmap ดูได้ว่า Cell ไหนยังไม่มีข้อมูล</span></li>
+          <li><span>Export ก่อนออกจากระบบเสมอ เพราะข้อมูลไม่ Save อัตโนมัติ</span></li>
+          <li><span>กด Escape หรือคลิกนอก popup เพื่อปิดคู่มือได้ทันที</span></li>
+        </ul>
+        <div class="man-sep"></div>
+        <div class="man-h2">ข้อควรระวัง</div>
+        <ul class="man-ul">
+          <li><span>ต้องการอินเทอร์เน็ตสำหรับโหลด Library (xlsx.js, Chart.js)</span></li>
+          <li><span>ข้อมูลเก็บใน RAM เท่านั้น ปิดเบราว์เซอร์แล้วข้อมูลหาย ต้อง Export ก่อน</span></li>
+          <li><span>Series ห้ามซ้ำใน Cell เดียวกัน แต่ Cell ต่างกันสามารถมีชื่อเดียวกันได้</span></li>
+          <li><span>การลบห้องจะลบ Series ทั้งหมดในห้องนั้นด้วย ไม่สามารถ Undo ได้</span></li>
+        </ul>
+        <div class="man-sep"></div>
+        <div class="man-h2">Keyboard Shortcut</div>
+        <div class="man-kv">
+          <span class="k">Escape</span><span class="v">ปิด popup คู่มือ / modal</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="ctx-menu" id="ctxMenu">
+  <div class="ctx-item" onclick="ctxCopy()">&#9635; Copy</div>
+  <div class="ctx-item" onclick="ctxEdit()">&#9998; แก้ไข</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item danger" onclick="ctxDelete()">&#10005; ลบ</div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalBox"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+let rooms = [{ id:1, name:'Room A' }, { id:2, name:'Room B' }];
+let entries = [
+  { id:1, roomId:1, ceiling:2.5, series:'A2.5-1' },
+  { id:2, roomId:1, ceiling:2.5, series:'A2.5-2' },
+  { id:3, roomId:1, ceiling:2.6, series:'A2.6-1' },
+  { id:4, roomId:2, ceiling:2.5, series:'B2.5-1' }
+];
+let nid = 100;
+let serFilter = new Set();
+let dragId = null;
+let copyBuffer = null;
+
+let rMultiSelected = new Set();
+let rMultiTemp = new Set();
+let rDDOpen = false;
+
+let sMultiSelected = new Set();
+let sMultiTemp = new Set();
+let sDDOpen = false;
+
+const HEIGHTS = [];
+for (let i = 0; i <= 55; i++) HEIGHTS.push(Math.round((2.5 + i * 0.1) * 10) / 10);
+
+let hFilterMode = 'range';
+let hRangeMin = 2.5, hRangeMax = 8.0;
+let hMultiSelected = new Set();
+let hMultiTemp = new Set();
+let hDDOpen = false;
+let activeTab = 'range';
+
+function fmt(v) { return (+v).toFixed(1); }
+
+function toast(msg, err) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.color = err ? '#a32d2d' : '#3b6d11';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function visibleHeights() {
+  if (hFilterMode === 'range') {
+    return HEIGHTS.filter(h => h >= hRangeMin - 0.001 && h <= hRangeMax + 0.001);
+  } else {
+    return hMultiSelected.size === 0 ? HEIGHTS : HEIGHTS.filter(h => hMultiSelected.has(fmt(h)));
+  }
+}
+
+function updateHLabel() {
+  let label = 'ทั้งหมด';
+  if (hFilterMode === 'range') {
+    if (hRangeMin !== 2.5 || hRangeMax !== 8.0) label = fmt(hRangeMin) + '–' + fmt(hRangeMax) + 'm';
+  } else {
+    if (hMultiSelected.size > 0) label = hMultiSelected.size + ' ค่า';
+  }
+  document.getElementById('hFilterLabel').textContent = label;
+}
+
+function toggleHDD() {
+  hDDOpen = !hDDOpen;
+  document.getElementById('hDD').classList.toggle('open', hDDOpen);
+  if (hDDOpen) { hMultiTemp = new Set(hMultiSelected); rebuildMultiList(); }
+}
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.getElementById('tabRange').classList.toggle('active', tab === 'range');
+  document.getElementById('tabMulti').classList.toggle('active', tab === 'multi');
+  document.getElementById('paneRange').classList.toggle('active', tab === 'range');
+  document.getElementById('paneMulti').classList.toggle('active', tab === 'multi');
+  if (tab === 'multi') { hMultiTemp = new Set(hMultiSelected); rebuildMultiList(); }
+}
+
+function rebuildMultiList() {
+  const html = HEIGHTS.map(h => {
+    const f = fmt(h);
+    const chk = hMultiTemp.has(f) ? 'checked' : '';
+    return '<div class="ms-item"><input type="checkbox" id="msc_' + f + '" value="' + f + '" ' + chk + ' onchange="toggleHTemp(\'' + f + '\',this.checked)"><label for="msc_' + f + '" style="cursor:pointer">' + f + 'm</label></div>';
+  }).join('');
+  document.getElementById('msList').innerHTML = html;
+}
+
+function toggleHTemp(v, checked) { checked ? hMultiTemp.add(v) : hMultiTemp.delete(v); }
+function selectAllH() { hMultiTemp = new Set(HEIGHTS.map(h => fmt(h))); rebuildMultiList(); }
+function clearAllH() { hMultiTemp = new Set(); rebuildMultiList(); }
+
+function applyMulti() {
+  hFilterMode = 'multi';
+  hMultiSelected = new Set(hMultiTemp);
+  updateHLabel();
+  hDDOpen = false;
+  document.getElementById('hDD').classList.remove('open');
+  renderAll();
+}
+
+function applyRange() {
+  hFilterMode = 'range';
+  hRangeMin = Math.max(2.5, Math.min(8.0, +document.getElementById('rangeMin').value));
+  hRangeMax = Math.max(2.5, Math.min(8.0, +document.getElementById('rangeMax').value));
+  if (hRangeMin > hRangeMax) { const tmp = hRangeMin; hRangeMin = hRangeMax; hRangeMax = tmp; }
+  document.getElementById('rangeMin').value = fmt(hRangeMin);
+  document.getElementById('rangeMax').value = fmt(hRangeMax);
+  updateHLabel();
+  renderAll();
+}
+
+function resetFilters() {
+  document.getElementById('searchRoom').value = '';
+  document.getElementById('searchSeries').value = '';
+  rMultiSelected = new Set(); rMultiTemp = new Set();
+  sMultiSelected = new Set(); sMultiTemp = new Set();
+  hFilterMode = 'range';
+  hRangeMin = 2.5; hRangeMax = 8.0;
+  hMultiSelected = new Set();
+  document.getElementById('rangeMin').value = '2.5';
+  document.getElementById('rangeMax').value = '8.0';
+  serFilter.clear();
+  updateHLabel(); updateRLabel(); updateSLabel();
+  renderAll();
+}
+
+function toggleRDD() {
+  rDDOpen = !rDDOpen;
+  document.getElementById('rDD').classList.toggle('open', rDDOpen);
+  if (rDDOpen) { rMultiTemp = new Set(rMultiSelected); rebuildRList(); }
+}
+function rebuildRList() {
+  const sr = document.getElementById('searchRoom').value.trim().toLowerCase();
+  const vis = sr ? rooms.filter(r => r.name.toLowerCase().includes(sr)) : rooms;
+  document.getElementById('rList').innerHTML = vis.map(r =>
+    '<div class="ms-item"><input type="checkbox" id="rc_' + r.id + '" value="' + r.id + '" ' + (rMultiTemp.has(r.id) ? 'checked' : '') + ' onchange="toggleRTemp(' + r.id + ',this.checked)"><label for="rc_' + r.id + '" style="cursor:pointer">' + r.name + '</label></div>'
+  ).join('');
+}
+function toggleRTemp(id, checked) { checked ? rMultiTemp.add(id) : rMultiTemp.delete(id); }
+function selectAllR() { rooms.forEach(r => rMultiTemp.add(r.id)); rebuildRList(); }
+function clearAllR() { rMultiTemp = new Set(); rebuildRList(); }
+function applyRoom() {
+  rMultiSelected = new Set(rMultiTemp);
+  updateRLabel(); rDDOpen = false;
+  document.getElementById('rDD').classList.remove('open');
+  renderAll();
+}
+function updateRLabel() {
+  document.getElementById('rFilterLabel').textContent =
+    rMultiSelected.size === 0 ? 'ทั้งหมด' : rMultiSelected.size + ' ห้อง';
+}
+function syncRoomSearch() { if (rDDOpen) rebuildRList(); else renderAll(); }
+
+function toggleSDD() {
+  sDDOpen = !sDDOpen;
+  document.getElementById('sDD').classList.toggle('open', sDDOpen);
+  if (sDDOpen) { sMultiTemp = new Set(sMultiSelected); rebuildSList(); }
+}
+function rebuildSList() {
+  const ss = document.getElementById('searchSeries').value.trim().toLowerCase();
+  const allS = [...new Set(entries.map(e => e.series))].sort();
+  const vis = ss ? allS.filter(s => s.toLowerCase().includes(ss)) : allS;
+  document.getElementById('sList').innerHTML = vis.map(s =>
+    '<div class="ms-item"><input type="checkbox" id="sc_' + s + '" value="' + s + '" ' + (sMultiTemp.has(s) ? 'checked' : '') + ' onchange="toggleSTemp(\'' + s + '\',this.checked)"><label for="sc_' + s + '" style="cursor:pointer">' + s + '</label></div>'
+  ).join('');
+}
+function toggleSTemp(s, checked) { checked ? sMultiTemp.add(s) : sMultiTemp.delete(s); }
+function selectAllS() { [...new Set(entries.map(e => e.series))].forEach(s => sMultiTemp.add(s)); rebuildSList(); }
+function clearAllS() { sMultiTemp = new Set(); rebuildSList(); }
+function applySeries() {
+  sMultiSelected = new Set(sMultiTemp);
+  updateSLabel(); sDDOpen = false;
+  document.getElementById('sDD').classList.remove('open');
+  renderAll();
+}
+function updateSLabel() {
+  document.getElementById('sFilterLabel').textContent =
+    sMultiSelected.size === 0 ? 'ทั้งหมด' : sMultiSelected.size + ' series';
+}
+function syncSeriesSearch() { if (sDDOpen) rebuildSList(); else renderAll(); }
+
+document.addEventListener('click', e => {
+  if (rDDOpen && !document.getElementById('rDropWrap').contains(e.target)) {
+    rDDOpen = false; document.getElementById('rDD').classList.remove('open');
+  }
+  if (sDDOpen && !document.getElementById('sDropWrap').contains(e.target)) {
+    sDDOpen = false; document.getElementById('sDD').classList.remove('open');
+  }
+  if (hDDOpen && !document.getElementById('hDropWrap').contains(e.target)) {
+    hDDOpen = false; document.getElementById('hDD').classList.remove('open');
+  }
+  if (!document.getElementById('ctxMenu').contains(e.target)) closeCtx();
+});
+
+function filtered() {
+  const sr = document.getElementById('searchRoom').value.trim().toLowerCase();
+  const ss = document.getElementById('searchSeries').value.trim().toLowerCase();
+  return entries.filter(e => {
+    if (rMultiSelected.size && !rMultiSelected.has(e.roomId)) return false;
+    if (sMultiSelected.size && !sMultiSelected.has(e.series)) return false;
+    if (serFilter.size && !serFilter.has(e.series)) return false;
+    if (sr) {
+      const room = rooms.find(r => r.id === e.roomId);
+      if (!room || !room.name.toLowerCase().includes(sr)) return false;
+    }
+    if (ss && !e.series.toLowerCase().includes(ss)) return false;
+    return true;
+  });
+}
+
+function renderStats() {
+  const f = filtered();
+  const vh = visibleHeights();
+  const fv = f.filter(e => vh.some(h => fmt(h) === fmt(e.ceiling)));
+  document.getElementById('stats').innerHTML =
+    '<div class="stat"><div class="stat-v">' + rooms.length + '</div><div class="stat-l">ห้องทั้งหมด</div></div>' +
+    '<div class="stat"><div class="stat-v">' + fv.length + '</div><div class="stat-l">รายการที่แสดง</div></div>' +
+    '<div class="stat"><div class="stat-v">' + new Set(fv.map(e => e.series)).size + '</div><div class="stat-l">series</div></div>' +
+    '<div class="stat"><div class="stat-v">' + vh.length + '</div><div class="stat-l">height columns</div></div>';
+}
+
+function renderDropdowns() {}
+
+function renderMatrix() {
+  const sr = document.getElementById('searchRoom').value.trim().toLowerCase();
+  let visRooms = rooms;
+  if (rMultiSelected.size) visRooms = visRooms.filter(r => rMultiSelected.has(r.id));
+  if (sr) visRooms = visRooms.filter(r => r.name.toLowerCase().includes(sr));
+  const f = filtered();
+  const vh = visibleHeights();
+  const map = {};
+  f.forEach(e => { const k = e.roomId + '_' + fmt(e.ceiling); if (!map[k]) map[k] = []; map[k].push(e); });
+
+  const thead = '<thead><tr><th class="rh sr">Room \\ Height (m)</th>' +
+    HEIGHTS.map(h => '<th class="sr' + (vh.some(v => fmt(v) === fmt(h)) ? '' : ' col-hidden') + '">' + fmt(h) + '</th>').join('') +
+    '</tr></thead>';
+
+  const tbody = visRooms.map(room => {
+    const cells = HEIGHTS.map(h => {
+      const visible = vh.some(v => fmt(v) === fmt(h));
+      const k = room.id + '_' + fmt(h);
+      const es = map[k] || [];
+      const tags = es.map(e =>
+        '<div class="stag" draggable="true" data-id="' + e.id + '" ondragstart="onDragStart(event,' + e.id + ')" ondragend="onDragEnd(event)" onclick="editEntry(' + e.id + ')" oncontextmenu="showCtxMenu(event,' + e.id + ',' + room.id + ',' + h + ')">' +
+        e.series + '<span class="dx" onclick="event.stopPropagation();delEntry(' + e.id + ')">×</span></div>'
+      ).join('');
+      return '<td class="' + (visible ? '' : 'col-hidden') + '" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,' + room.id + ',' + h + ')" oncontextmenu="showCellCtxMenu(event,' + room.id + ',' + h + ')">' +
+        '<div class="cell-inner">' + tags + '<div class="ab" onclick="openAddEntry(' + room.id + ',' + h + ')">+</div></div></td>';
+    }).join('');
+    return '<tr><td class="rh">' + room.name +
+      '<span style="float:right;cursor:pointer;font-size:10px;color:#C9A84C" onclick="editRoom(' + room.id + ')">✎</span>' +
+      '</td>' + cells + '</tr>';
+  }).join('');
+
+  document.getElementById('tbl').innerHTML = thead + '<tbody>' + tbody + '</tbody>';
+}
+
+function renderAll() { renderDropdowns(); renderMatrix(); renderStats(); updateHLabel(); updateRLabel(); updateSLabel(); }
+function toggleSer(s) { serFilter.has(s) ? serFilter.delete(s) : serFilter.add(s); renderAll(); }
+
+function onDragStart(e, id) { dragId = id; e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', id); }
+function onDragEnd(e) { e.currentTarget.classList.remove('dragging'); document.querySelectorAll('td.drop-over').forEach(el => el.classList.remove('drop-over')); dragId = null; }
+function onDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; e.currentTarget.classList.add('drop-over'); }
+function onDragLeave(e) { e.currentTarget.classList.remove('drop-over'); }
+function onDrop(e, roomId, ceiling) {
+  e.preventDefault(); e.currentTarget.classList.remove('drop-over');
+  if (dragId === null) return;
+  const en = entries.find(en => en.id === dragId);
+  if (en) {
+    const isDup = entries.some(e => e.roomId === roomId && fmt(e.ceiling) === fmt(ceiling) && e.series === en.series && e.id !== en.id);
+    if (isDup) { toast('Series "' + en.series + '" มีอยู่ใน cell นี้แล้ว', true); dragId = null; return; }
+    en.roomId = roomId; en.ceiling = ceiling;
+  }
+  dragId = null; renderAll();
+}
+
+let ctxTargetId = null;
+let ctxTargetRoomId = null;
+let ctxTargetCeiling = null;
+
+function showCtxMenu(e, entryId, roomId, ceiling) {
+  e.preventDefault();
+  e.stopPropagation();
+  ctxTargetId = entryId;
+  ctxTargetRoomId = roomId;
+  ctxTargetCeiling = ceiling;
+  const cellSeries = entries.filter(en => en.roomId === roomId && fmt(en.ceiling) === fmt(ceiling)).map(en => en.series);
+  const pasteLabel = copyBuffer ? (copyBuffer.length === 1 ? 'Paste "' + copyBuffer[0] + '"' : 'Paste ' + copyBuffer.length + ' series') : null;
+  const menu = document.getElementById('ctxMenu');
+  menu.innerHTML =
+    '<div class="ctx-item" onclick="ctxCopy()">&#9635; Copy series นี้</div>' +
+    (cellSeries.length > 1 ? '<div class="ctx-item" onclick="ctxCopyCell(' + roomId + ',' + ceiling + ')">&#9638; Copy ทั้ง cell (' + cellSeries.length + ')</div>' : '') +
+    (pasteLabel ? '<div class="ctx-item" onclick="ctxPaste()">&#9001; ' + pasteLabel + '</div>' : '') +
+    '<div class="ctx-item" onclick="ctxEdit()">&#9998; แก้ไข</div>' +
+    '<div class="ctx-sep"></div>' +
+    '<div class="ctx-item danger" onclick="ctxDelete()">&#10005; ลบ series นี้</div>';
+  menu.classList.add('open');
+  const x = Math.min(e.clientX, window.innerWidth - 200);
+  const y = Math.min(e.clientY, window.innerHeight - 160);
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+}
+
+function showCellCtxMenu(e, roomId, ceiling) {
+  e.preventDefault();
+  ctxTargetId = null;
+  ctxTargetRoomId = roomId;
+  ctxTargetCeiling = ceiling;
+  const cellSeries = entries.filter(en => en.roomId === roomId && fmt(en.ceiling) === fmt(ceiling)).map(en => en.series);
+  const pasteLabel = copyBuffer ? (copyBuffer.length === 1 ? 'Paste "' + copyBuffer[0] + '"' : 'Paste ' + copyBuffer.length + ' series') : null;
+  const menu = document.getElementById('ctxMenu');
+  menu.innerHTML =
+    (cellSeries.length > 0 ? '<div class="ctx-item" onclick="ctxCopyCell(' + roomId + ',' + ceiling + ')">&#9638; Copy ทั้ง cell (' + cellSeries.length + ')</div><div class="ctx-sep"></div>' : '') +
+    (pasteLabel ? '<div class="ctx-item" onclick="ctxPaste()">&#9001; ' + pasteLabel + '</div><div class="ctx-sep"></div>' : '') +
+    '<div class="ctx-item" onclick="openAddEntry(' + roomId + ',' + ceiling + ');closeCtx()">+ เพิ่ม Series</div>';
+  menu.classList.add('open');
+  const x = Math.min(e.clientX, window.innerWidth - 200);
+  const y = Math.min(e.clientY, window.innerHeight - 140);
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+}
+
+function closeCtx() { document.getElementById('ctxMenu').classList.remove('open'); ctxTargetId = null; }
+
+function ctxCopy() {
+  if (ctxTargetId === null) return;
+  const en = entries.find(e => e.id === ctxTargetId);
+  if (en) { copyBuffer = [en.series]; toast('Copied: ' + en.series); }
+  closeCtx();
+}
+
+function ctxCopyCell(roomId, ceiling) {
+  const cellSeries = entries.filter(en => en.roomId === roomId && fmt(en.ceiling) === fmt(ceiling)).map(en => en.series);
+  if (cellSeries.length === 0) return;
+  copyBuffer = cellSeries;
+  toast('Copied ' + cellSeries.length + ' series จาก cell นี้');
+  closeCtx();
+}
+
+function ctxEdit() {
+  if (ctxTargetId !== null) editEntry(ctxTargetId);
+  closeCtx();
+}
+
+function ctxDelete() {
+  if (ctxTargetId !== null) delEntry(ctxTargetId);
+  closeCtx();
+}
+
+function ctxPaste() {
+  if (!copyBuffer || ctxTargetRoomId === null) return;
+  let added = 0, skipped = 0;
+  copyBuffer.forEach(series => {
+    const isDup = entries.some(e => e.roomId === ctxTargetRoomId && fmt(e.ceiling) === fmt(ctxTargetCeiling) && e.series === series);
+    if (isDup) { skipped++; return; }
+    entries.push({ id: nid++, roomId: ctxTargetRoomId, ceiling: ctxTargetCeiling, series });
+    added++;
+  });
+  renderAll();
+  if (skipped > 0 && added === 0) toast('ทุก series มีอยู่แล้วใน cell นี้', true);
+  else if (skipped > 0) toast('Pasted ' + added + ' series (ข้าม ' + skipped + ' ที่ซ้ำ)');
+  else toast(added === 1 ? 'Pasted: ' + copyBuffer[0] : 'Pasted ' + added + ' series');
+  closeCtx();
+}
+
+function openModal(type, data) {
+  document.getElementById('modalOverlay').classList.add('open');
+  const box = document.getElementById('modalBox');
+  const hOpts = HEIGHTS.map(h => '<option value="' + h + '">' + fmt(h) + 'm</option>').join('');
+  const rOpts = rooms.map(r => '<option value="' + r.id + '">' + r.name + '</option>').join('');
+  if (type === 'room') {
+    box.innerHTML = '<h3>' + (data ? 'แก้ไขห้อง' : 'เพิ่มห้องใหม่') + '</h3>' +
+      '<label>Room Name</label><input id="mName" value="' + (data ? data.name : '') + '" placeholder="เช่น Room C">' +
+      '<div class="modal-actions">' + (data ? '<button class="btn btn-danger" onclick="delRoom(' + data.id + ')">ลบ</button>' : '') +
+      '<button class="btn" onclick="closeModal()">ยกเลิก</button>' +
+      '<button class="btn btn-primary" onclick="saveRoom(' + (data ? data.id : 'null') + ')">บันทึก</button></div>';
+  } else if (type === 'entry') {
+    box.innerHTML = '<h3>เพิ่ม Entry</h3>' +
+      '<label>Room</label><select id="mRoom">' + rOpts + '</select>' +
+      '<label>Height (m)</label><select id="mCeil">' + hOpts + '</select>' +
+      '<label>Series Name</label><input id="mSeries" placeholder="เช่น A2.5-3">' +
+      '<div class="modal-actions"><button class="btn" onclick="closeModal()">ยกเลิก</button>' +
+      '<button class="btn btn-primary" onclick="saveEntry(null)">บันทึก</button></div>';
+  } else if (type === 'editEntry') {
+    const en = data;
+    const hO = HEIGHTS.map(h => '<option value="' + h + '"' + (fmt(h) === fmt(en.ceiling) ? ' selected' : '') + '>' + fmt(h) + 'm</option>').join('');
+    const rO = rooms.map(r => '<option value="' + r.id + '"' + (r.id === en.roomId ? ' selected' : '') + '>' + r.name + '</option>').join('');
+    box.innerHTML = '<h3>แก้ไข Entry</h3>' +
+      '<label>Room</label><select id="mRoom">' + rO + '</select>' +
+      '<label>Height (m)</label><select id="mCeil">' + hO + '</select>' +
+      '<label>Series Name</label><input id="mSeries" value="' + en.series + '">' +
+      '<div class="modal-actions"><button class="btn btn-danger" onclick="delEntry(' + en.id + ');closeModal()">ลบ</button>' +
+      '<button class="btn" onclick="closeModal()">ยกเลิก</button>' +
+      '<button class="btn btn-primary" onclick="saveEntry(' + en.id + ')">บันทึก</button></div>';
+  } else if (type === 'addEntry') {
+    const hO = HEIGHTS.map(h => '<option value="' + h + '"' + (fmt(h) === fmt(data.ceil) ? ' selected' : '') + '>' + fmt(h) + 'm</option>').join('');
+    const rO = rooms.map(r => '<option value="' + r.id + '"' + (r.id === data.roomId ? ' selected' : '') + '>' + r.name + '</option>').join('');
+    box.innerHTML = '<h3>เพิ่ม Series</h3>' +
+      '<label>Room</label><select id="mRoom">' + rO + '</select>' +
+      '<label>Height (m)</label><select id="mCeil">' + hO + '</select>' +
+      '<label>Series Name</label><input id="mSeries" placeholder="เช่น A2.5-3">' +
+      '<div class="modal-actions"><button class="btn" onclick="closeModal()">ยกเลิก</button>' +
+      '<button class="btn btn-primary" onclick="saveEntry(null)">บันทึก</button></div>';
+  }
+}
+
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+function saveRoom(id) {
+  const name = document.getElementById('mName').value.trim(); if (!name) return;
+  if (id && id !== 'null') { const r = rooms.find(r => r.id == id); if (r) r.name = name; }
+  else rooms.push({ id: nid++, name });
+  closeModal(); renderAll();
+}
+function editRoom(id) { openModal('room', rooms.find(r => r.id === id)); }
+function delRoom(id) { rooms = rooms.filter(r => r.id !== id); entries = entries.filter(e => e.roomId !== id); closeModal(); renderAll(); }
+function saveEntry(id) {
+  const roomId = +document.getElementById('mRoom').value;
+  const ceiling = +document.getElementById('mCeil').value;
+  const series = document.getElementById('mSeries').value.trim();
+  if (!series) return;
+  const isDup = entries.some(e => e.roomId === roomId && fmt(e.ceiling) === fmt(ceiling) && e.series === series && e.id != id);
+  if (isDup) { toast('Series "' + series + '" มีอยู่ใน cell นี้แล้ว', true); return; }
+  if (id) { const e = entries.find(e => e.id == id); if (e) { e.roomId = roomId; e.ceiling = ceiling; e.series = series; } }
+  else entries.push({ id: nid++, roomId, ceiling, series });
+  closeModal(); renderAll();
+}
+function editEntry(id) { openModal('editEntry', entries.find(e => e.id === id)); }
+function delEntry(id) { entries = entries.filter(e => e.id !== id); renderAll(); }
+function openAddEntry(roomId, ceil) { openModal('addEntry', { roomId, ceil }); }
+document.getElementById('modalOverlay').onclick = e => { if (e.target === document.getElementById('modalOverlay')) closeModal(); };
+
+function isDataRow(row) {
+  const v0 = row[0];
+  if (v0 === null || v0 === undefined || v0 === '') return false;
+  const s = String(v0).trim();
+  if (!s || s === 'ID' || s === 'MatrixId' || s === 'MATRIX') return false;
+  return !isNaN(parseFloat(s));
+}
+
+function importXlsx(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const wb = XLSX.read(ev.target.result, { type: 'array', raw: false });
+      const s1n = wb.SheetNames.find(n => n.toLowerCase().includes('matrix') && !n.toLowerCase().includes('data')) || wb.SheetNames[0];
+      const s2n = wb.SheetNames.find(n => n.toLowerCase().includes('data')) || wb.SheetNames[1];
+      let nr = [], ne = [], eid = 1000;
+      const s1 = wb.Sheets[s1n];
+      if (s1) XLSX.utils.sheet_to_json(s1, { header: 1, defval: '' }).forEach(row => {
+        if (!isDataRow(row)) return;
+        const id = parseInt(String(row[0]).trim()), name = String(row[1] || '').trim();
+        if (!isNaN(id) && name) nr.push({ id, name });
+      });
+      const s2 = wb.Sheets[s2n];
+      if (s2) XLSX.utils.sheet_to_json(s2, { header: 1, defval: '' }).forEach(row => {
+        if (!isDataRow(row)) return;
+        const roomId = parseInt(String(row[0]).trim()), ceiling = parseFloat(String(row[1]).trim()), series = String(row[2] || '').trim();
+        if (!isNaN(roomId) && !isNaN(ceiling) && series) ne.push({ id: eid++, roomId, ceiling, series });
+      });
+      if (!nr.length && !ne.length) { toast('ไม่พบข้อมูล — ตรวจสอบ format', true); return; }
+      if (nr.length) rooms = nr;
+      if (ne.length) entries = ne;
+      nid = Math.max(...rooms.map(r => r.id), ...entries.map(e => e.id), 100) + 1;
+      serFilter.clear(); renderAll();
+      toast('นำเข้าสำเร็จ: ' + nr.length + ' ห้อง, ' + ne.length + ' entries');
+    } catch(err) { toast('เกิดข้อผิดพลาด: ' + err.message, true); }
+  };
+  reader.readAsArrayBuffer(file);
+  input.value = '';
+}
+
+function exportXlsx() {
+  const wb = XLSX.utils.book_new();
+  const r1 = [['MATRIX','Matrix',60011],[],['ID','Room Name','']];
+  rooms.forEach(r => r1.push([String(r.id), r.name, '']));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(r1), 'Matrix');
+  const r2 = [['MATRIX','MatrixData','60012'],[],['MatrixId','CeilingHeight','Series Name']];
+  entries.forEach(e => r2.push([String(e.roomId), String(fmt(e.ceiling)), e.series]));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(r2), '60012 MatrixData');
+  XLSX.writeFile(wb, 'Matrix.xlsx');
+  toast('Export สำเร็จ: Matrix.xlsx');
+}
+
+renderAll();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+let chartMode = 'height';
+let mainChartInst = null;
+
+const GOLD = '#C9A84C';
+const GOLD2 = '#E8D5A3';
+const GOLD3 = '#8B6914';
+const BG = '#1e1800';
+const GRID = 'rgba(201,168,76,0.12)';
+const TEXT = '#E8D5A3';
+
+const PALETTE = [
+  '#C9A84C','#E8D5A3','#8B6914','#F0C060','#A07828',
+  '#D4B070','#7A5010','#FFD878','#6B4400','#E0C090'
+];
+
+function switchChart(mode) {
+  chartMode = mode;
+  ['height','room','heatmap'].forEach(m => {
+    const btn = document.getElementById('chartTab' + (m==='height'?1:m==='room'?2:3));
+    btn.style.background = m === mode ? '#1e1800' : '';
+    btn.style.color = m === mode ? '#C9A84C' : '';
+    btn.style.borderColor = m === mode ? '#C9A84C' : '';
+  });
+  renderChart();
+}
+
+function renderChart() {
+  const f = filtered();
+  const canvas = document.getElementById('mainChart');
+  if (mainChartInst) { mainChartInst.destroy(); mainChartInst = null; }
+
+  if (chartMode === 'height') {
+    const byH = {};
+    f.forEach(e => {
+      const k = fmt(e.ceiling);
+      byH[k] = (byH[k] || 0) + 1;
+    });
+    const labels = Object.keys(byH).sort((a,b) => +a - +b);
+    const data = labels.map(l => byH[l]);
+    mainChartInst = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels: labels.map(l => l + 'm'),
+        datasets: [{
+          label: 'จำนวน Series',
+          data,
+          backgroundColor: labels.map((_, i) => PALETTE[i % PALETTE.length] + 'cc'),
+          borderColor: labels.map((_, i) => PALETTE[i % PALETTE.length]),
+          borderWidth: 1,
+          borderRadius: 3
+        }]
+      },
+      options: chartOpts('จำนวน Series ต่อ Ceiling Height', 'Ceiling Height (m)', 'จำนวน Series')
+    });
+
+  } else if (chartMode === 'room') {
+    const byR = {};
+    f.forEach(e => {
+      const room = rooms.find(r => r.id === e.roomId);
+      const k = room ? room.name : 'Unknown';
+      byR[k] = (byR[k] || 0) + 1;
+    });
+    const labels = Object.keys(byR).sort();
+    const data = labels.map(l => byR[l]);
+    const wrapHeight = Math.max(320, labels.length * 40 + 80);
+    canvas.parentElement.style.height = wrapHeight + 'px';
+    mainChartInst = new Chart(canvas, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: 'จำนวน Series',
+          data,
+          backgroundColor: labels.map((_, i) => PALETTE[i % PALETTE.length] + 'cc'),
+          borderColor: labels.map((_, i) => PALETTE[i % PALETTE.length]),
+          borderWidth: 1,
+          borderRadius: 3
+        }]
+      },
+      options: {
+        ...chartOpts('จำนวน Series ต่อ Room', 'Room', 'จำนวน Series'),
+        indexAxis: 'y'
+      }
+    });
+
+  } else if (chartMode === 'heatmap') {
+    canvas.parentElement.style.height = '320px';
+    const roomList = rooms.filter(r => !rMultiSelected.size || rMultiSelected.has(r.id));
+    const usedH = [...new Set(f.map(e => fmt(e.ceiling)))].sort((a,b) => +a - +b);
+    if (!roomList.length || !usedH.length) return;
+
+    const datasets = roomList.map((room, ri) => ({
+      label: room.name,
+      data: usedH.map(h => {
+        const cnt = f.filter(e => e.roomId === room.id && fmt(e.ceiling) === h).length;
+        return cnt;
+      }),
+      backgroundColor: PALETTE[ri % PALETTE.length] + 'bb',
+      borderColor: PALETTE[ri % PALETTE.length],
+      borderWidth: 1,
+      borderRadius: 2
+    }));
+
+    mainChartInst = new Chart(canvas, {
+      type: 'bar',
+      data: { labels: usedH.map(h => h + 'm'), datasets },
+      options: {
+        ...chartOpts('Series Count per Room & Height', 'Ceiling Height (m)', 'จำนวน Series'),
+        plugins: {
+          ...chartOpts().plugins,
+          legend: {
+            display: true,
+            labels: { color: TEXT, font: { size: 11 }, boxWidth: 12, padding: 12 }
+          }
+        }
+      }
+    });
+  }
+}
+
+function chartOpts(title, xLabel, yLabel) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      title: {
+        display: !!title,
+        text: title || '',
+        color: GOLD,
+        font: { size: 13, weight: '500' },
+        padding: { bottom: 12 }
+      },
+      tooltip: {
+        backgroundColor: '#1A1A1A',
+        borderColor: GOLD,
+        borderWidth: 0.5,
+        titleColor: GOLD,
+        bodyColor: TEXT,
+        padding: 10
+      }
+    },
+    scales: {
+      x: {
+        ticks: { color: TEXT, font: { size: 10 }, maxRotation: 45, autoSkip: false },
+        grid: { color: GRID },
+        border: { color: GOLD3 },
+        title: { display: !!xLabel, text: xLabel || '', color: GOLD2, font: { size: 11 } }
+      },
+      y: {
+        ticks: { color: TEXT, font: { size: 10 } },
+        grid: { color: GRID },
+        border: { color: GOLD3 },
+        beginAtZero: true,
+        title: { display: !!yLabel, text: yLabel || '', color: GOLD2, font: { size: 11 } }
+      }
+    }
+  };
+}
+
+const _origRenderAll = renderAll;
+renderAll = function() { _origRenderAll(); renderChart(); };
+renderChart();
+
+function openManual() { document.getElementById('manualOverlay').classList.add('open'); }
+function closeManual() { document.getElementById('manualOverlay').classList.remove('open'); }
+function showSection(idx) {
+  document.querySelectorAll('.man-section').forEach((s,i) => s.classList.toggle('active', i===idx));
+  document.querySelectorAll('.manual-nav-item').forEach((n,i) => n.classList.toggle('active', i===idx));
+  document.querySelector('.manual-content').scrollTop = 0;
+}
+document.getElementById('manualOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeManual();
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') { closeManual(); closeModal(); closeCtx(); }
+});
+</script>
+</body>
+</html>
